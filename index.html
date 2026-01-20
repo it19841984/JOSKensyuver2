@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>矯正歯科専門医 共通研修履歴管理アプリ</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+         {
+            body { margin: 0; padding: 20px; }
+            .no-print { display: none !important; }
+            .print-break { page-break-inside: avoid; }
+        }
+        .training-table { border-collapse: collapse; width: 100%; }
+        .training-table th, .training-table td { border: 1px solid #d1d5db; padding: 8px; text-align: center; }
+        .valid-period { background-color: #dcfce7; }
+        .invalid-period { background-color: #fef2f2; }
+        .checkbox-matrix input[type="checkbox"] { transform: scale(1.2); }
+        
+
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen py-8">
+    <div class="max-w-6xl mx-auto px-4">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-3xl font-bold text-center text-blue-800 mb-2">
+                <i class="fas fa-tooth mr-3"></i>矯正歯科専門医 共通研修履歴管理アプリ
+            </h1>
+            
+            <p class="text-center text-sm text-gray-600 mb-8">
+                ※本アプリの判定結果は保証できません。利用は自己責任とし、最終判断は学会ホームページをご確認ください。
+            </p>
+
+            <!-- 基本設定セクション -->
+            <div class="bg-blue-50 rounded-lg p-6 mb-8">
+
+                <h2 class="text-xl font-semibold text-blue-800 mb-4">
+                    <i class="fas fa-cog mr-2"></i>基本設定
+                </h2>
+                
+                <!-- 手順説明 -->
+                <div class="bg-white border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                        <div>
+                            <p class="text-sm text-gray-700 font-medium mb-2">入力の手順</p>
+                            <ol class="text-sm text-gray-600 space-y-1">
+                                <li>① まず「申請タイプ」を選択してください（新規申請または更新申請）</li>
+                                <li>② 次に表示される「申請年度」を選択してください</li>
+                                <li>③ 申請要件と研修履歴入力画面が表示されます</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">①申請タイプ</label>
+                        <select id="applicationType" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">選択してください</option>
+                            <option value="new">新規申請</option>
+                            <option value="renewal">更新申請</option>
+                        </select>
+                    </div>
+                    
+                    <div id="yearSelectContainer" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">②申請年度</label>
+                        <select id="applicationYear" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">選択してください</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 前回データの読み込み（初期画面から常に表示：青枠内の下部） -->
+                <div class="mt-4 no-print">
+                    <div class="text-xs text-gray-600 mb-2">
+                        前回入力データを使用する場合はこちらから
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="file" id="importFile" accept="application/json" class="hidden" />
+                        <button id="importBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-upload mr-2"></i>読み込み
+                        </button>
+                        <span id="importStatus" class="text-xs text-gray-600"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 申請要件表示 -->
+            <div id="requirementDisplay" class="bg-green-50 rounded-lg p-6 mb-8" style="display: none;">
+                <h2 class="text-xl font-semibold text-green-800 mb-4">
+                    <i class="fas fa-clipboard-list mr-2"></i>申請要件
+                </h2>
+                <div id="requirementContent"></div>
+            </div>
+
+            <!-- 研修履歴入力 -->
+            <div id="trainingHistorySection" class="bg-gray-50 rounded-lg p-6 mb-8" style="display: none;">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-table mr-2"></i>研修履歴入力
+                </h2>
+
+                <p class="text-sm text-gray-600 mb-6">
+                    ※追加研修は受講日と認定年度が異なるため手入力をしてください。<br>
+                    ※各研修タイプとも毎年2単位までが上限です。専門医機構主催の研修は毎年2単位以上の取得を推奨します。
+                </p>
+
+                <!-- 専門医機構主催の研修履歴 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-3">
+                        <i class="fas fa-building mr-2"></i>1. 専門医機構主催の研修履歴入力
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table id="trainingMatrixInstitutional" class="training-table">
+                            <thead>
+                                <tr>
+                                    <th class="bg-blue-200">研修分野</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="bg-blue-50 font-medium">①医療倫理</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-blue-50 font-medium">②患者・医療者関係の構築</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-blue-50 font-medium">③医療安全</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-blue-50 font-medium">④院内感染対策</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-blue-50 font-medium">⑤医療関連法規・医療経済</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 専門医機構主催以外の研修履歴 -->
+                <div>
+                    <h3 class="text-lg font-semibold text-green-800 mb-3">
+                        <i class="fas fa-graduation-cap mr-2"></i>2. 専門医機構主催以外の研修履歴入力
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table id="trainingMatrixOther" class="training-table">
+                            <thead>
+                                <tr>
+                                    <th class="bg-green-200">研修分野</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="bg-green-50 font-medium">①医療倫理</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-green-50 font-medium">②患者・医療者関係の構築</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-green-50 font-medium">③医療安全</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-green-50 font-medium">④院内感染対策</td>
+                                </tr>
+                                <tr>
+                                    <td class="bg-green-50 font-medium">⑤医療関連法規・医療経済</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 進捗状況表示 -->
+            <div id="progressSection" class="bg-purple-50 rounded-lg p-6 mb-8" style="display: none;">
+                <h2 class="text-xl font-semibold text-purple-800 mb-4">
+                    <i class="fas fa-chart-line mr-2"></i>進捗状況
+                </h2>
+                <div id="progressContent"></div>
+            </div>
+
+            <!-- 操作ボタン -->
+            <div id="saveButtonSection" class="flex flex-col items-center space-y-3 no-print" style="display: none;">
+                <div class="flex justify-center space-x-4">
+                <button id="printBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors">
+                    <i class="fas fa-print mr-2"></i>印刷
+                </button>
+                <button id="exportBtn" class="bg-gray-800 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-900 transition-colors">
+                    <i class="fas fa-file-export mr-2"></i>保存（データファイル）
+                </button>
+                </div>
+
+                <!-- 印刷/保存の下に説明を表示 -->
+                <div class="bg-white border border-gray-200 rounded-lg p-3 max-w-3xl w-full">
+                    <p class="text-sm text-gray-700 mt-2">
+                        <span class="font-semibold text-gray-800">データ保存：</span>「保存（データファイル）」を押すと、今の入力内容をファイルに保存できます。
+                    </p>
+                    <p class="text-sm text-gray-700 mt-2">
+                        次回入力時は、初期画面の読み込み（インポート）から以前このアプリで保存した「データ保存用ファイル」を選ぶと、入力内容が元に戻ります。
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">※保存されるファイル名の例：共通研修データ_2027_新規.json</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let trainingData = {};
+        let currentApplicationType = '';
+        let currentApplicationYear = '';
+
+        // 追加研修を表示する関数
+
+
+
+        // 申請タイプ変更時の処理
+        document.getElementById('applicationType').addEventListener('change', function() {
+            const type = this.value;
+            currentApplicationType = type;
+            const yearSelect = document.getElementById('applicationYear');
+            const yearSelectContainer = document.getElementById('yearSelectContainer');
+            
+            if (!type) {
+                yearSelectContainer.style.display = 'none';
+                hideAllSections();
+                return;
+            }
+            
+            // ②申請年度を表示
+            yearSelectContainer.style.display = 'block';
+            
+            yearSelect.innerHTML = '<option value="">選択してください</option>';
+            
+            if (type === 'new') {
+                for (let year = 2026; year <= 2035; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year + '年';
+                    yearSelect.appendChild(option);
+                }
+            } else if (type === 'renewal') {
+                const renewalOptions = [
+                    { year: 2027, text: '2027年度申請（専門医期限2028年3月31日）' },
+                    { year: 2028, text: '2028年度申請（専門医期限2029年3月31日）' },
+                    { year: 2029, text: '2029年度申請（専門医期限2030年3月31日）' },
+                    { year: 2030, text: '2030年度申請（専門医期限2031年3月31日）' },
+                    { year: 2031, text: '2031年度申請（専門医期限2032年3月31日）' },
+                    { year: 2032, text: '2032年度申請（専門医期限2033年3月31日）' },
+                    { year: 2033, text: '2033年度申請（専門医期限2034年3月31日）' },
+                    { year: 2034, text: '2034年度申請（専門医期限2035年3月31日）' },
+                    { year: 2035, text: '2035年度申請（専門医期限2036年3月31日）' }
+                ];
+                
+                renewalOptions.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.year;
+                    option.textContent = opt.text;
+                    yearSelect.appendChild(option);
+                });
+            }
+            
+            hideAllSections();
+        });
+
+        // 申請年度変更時の処理
+        document.getElementById('applicationYear').addEventListener('change', function() {
+            const year = parseInt(this.value);
+            currentApplicationYear = year;
+            
+            if (year && currentApplicationType) {
+                showRequirements();
+                generateTrainingMatrix();
+                showProgressSection();
+                // 保存ボタンを表示
+                document.getElementById('saveButtonSection').style.display = 'flex';
+            } else {
+                hideAllSections();
+            }
+        });
+
+        function hideAllSections() {
+            document.getElementById('requirementDisplay').style.display = 'none';
+            document.getElementById('trainingHistorySection').style.display = 'none';
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('saveButtonSection').style.display = 'none';
+        }
+
+        function showRequirements() {
+            const requirementDiv = document.getElementById('requirementDisplay');
+            const contentDiv = document.getElementById('requirementContent');
+            
+            let targetPeriod, requiredUnits, fieldRequirement;
+            
+            if (currentApplicationType === 'new') {
+                // 新規申請の計算
+                if (currentApplicationYear <= 2027) {
+                    targetPeriod = `2022年〜${currentApplicationYear - 1}年`;
+                } else {
+                    targetPeriod = `${currentApplicationYear - 5}年〜${currentApplicationYear - 1}年`;
+                }
+                
+                if (currentApplicationYear === 2026) {
+                    requiredUnits = '8単位';
+                    fieldRequirement = '分野別の最低単位数制限なし';
+                } else {
+                    requiredUnits = '10単位以上';
+                    if (currentApplicationYear >= 2029) {
+                        fieldRequirement = '①～⑤の研修項目から各1分野から１単位以上を取得することが必須<br>そのうち①医療倫理、②患者・医療者関係の構築、⑤医療関連法規・医療経済については、専門医機構主催の共通研修で各1単位（合計3単位）の受講が必須';
+                    } else {
+                        fieldRequirement = '各分野から1単位以上必須';
+                    }
+                }
+            } else {
+                // 更新申請の計算
+                targetPeriod = `${currentApplicationYear - 5}年〜${currentApplicationYear - 1}年`;
+                requiredUnits = '10単位';
+                if (currentApplicationYear === 2026) {
+                    fieldRequirement = '分野別の最低単位数制限なし';
+                } else if (currentApplicationYear >= 2029) {
+                    fieldRequirement = '①～⑤の研修項目から各1分野から１単位以上を取得することが必須<br>そのうち①医療倫理、②患者・医療者関係の構築、⑤医療関連法規・医療経済については、専門医機構主催の共通研修で各1単位（合計3単位）の受講が必須';
+                } else {
+                    fieldRequirement = '各分野から1単位以上必須';
+                }
+            }
+            
+            contentDiv.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-lg border">
+                        <h3 class="font-semibold text-green-700 mb-2">対象期間</h3>
+                        <p class="text-lg">${targetPeriod}</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg border">
+                        <h3 class="font-semibold text-green-700 mb-2">必要単位数</h3>
+                        <p class="text-lg">${requiredUnits}</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg border">
+                        <h3 class="font-semibold text-green-700 mb-2">分野別要件</h3>
+                        <p class="text-sm">${fieldRequirement}</p>
+                    </div>
+                </div>
+            `;
+            
+            requirementDiv.style.display = 'block';
+        }
+
+        function generateTrainingMatrix() {
+            // 2つのテーブルを生成
+            generateSingleTrainingMatrix('trainingMatrixInstitutional', 'institutional');
+            generateSingleTrainingMatrix('trainingMatrixOther', 'other');
+            
+            document.getElementById('trainingHistorySection').style.display = 'block';
+        }
+
+        function generateSingleTrainingMatrix(tableId, trainingType) {
+            const table = document.getElementById(tableId);
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+            
+            // 年度範囲を計算（申請年度を含む過去7年）
+            const startYear = currentApplicationYear - 6;
+            const endYear = currentApplicationYear;
+            
+            // ヘッダーを再構築
+            const headerColor = trainingType === 'institutional' ? 'bg-blue-200' : 'bg-green-200';
+            thead.innerHTML = `<th class="${headerColor}">研修分野</th>`;
+            for (let year = startYear; year <= endYear; year++) {
+                const th = document.createElement('th');
+                th.className = headerColor;
+                th.textContent = year + '年';
+                thead.appendChild(th);
+            }
+            
+            // 対象期間を計算
+            let validStartYear, validEndYear;
+            if (currentApplicationType === 'new') {
+                if (currentApplicationYear <= 2027) {
+                    validStartYear = 2022;
+                    validEndYear = currentApplicationYear - 1;
+                } else {
+                    validStartYear = currentApplicationYear - 5;
+                    validEndYear = currentApplicationYear - 1;
+                }
+            } else {
+                validStartYear = currentApplicationYear - 5;
+                validEndYear = currentApplicationYear - 1;
+            }
+            
+            // ボディを再構築
+            const fields = ['①医療倫理', '②患者・医療者関係の構築', '③医療安全', '④院内感染対策', '⑤医療関連法規・医療経済'];
+            const cellColor = trainingType === 'institutional' ? 'bg-blue-50' : 'bg-green-50';
+            tbody.innerHTML = '';
+            
+            fields.forEach((field, fieldIndex) => {
+                const row = document.createElement('tr');
+                
+                const fieldCell = document.createElement('td');
+                fieldCell.className = cellColor + ' font-medium';
+                fieldCell.textContent = field;
+                row.appendChild(fieldCell);
+                
+                for (let year = startYear; year <= endYear; year++) {
+                    const cell = document.createElement('td');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'transform scale-125';
+                    checkbox.dataset.year = year;
+                    checkbox.dataset.field = fieldIndex;
+                    checkbox.dataset.trainingType = trainingType;
+                    
+                    // 対象期間かどうかで色分け
+                    if (year >= validStartYear && year <= validEndYear) {
+                        cell.className = 'valid-period';
+                    } else {
+                        cell.className = 'invalid-period';
+                    }
+                    
+                    function handleTrainingCheckboxChange(e) {
+                        const cb = e.target;
+
+                        const getCheckboxes = () => Array.from(cell.querySelectorAll('input[type="checkbox"]'));
+                        const checkedCount = () => getCheckboxes().filter(x => x.checked).length;
+
+                        // 1) 右詰め整理: 末尾の未チェックを削除（最低1個は残す）
+                        const cleanupTrailingUnchecked = () => {
+                            let boxes = getCheckboxes();
+                            while (boxes.length > 1 && boxes[boxes.length - 1].checked === false) {
+                                cell.removeChild(boxes[boxes.length - 1]);
+                                boxes = getCheckboxes();
+                            }
+                        };
+
+                        if (cb.checked) {
+                            // チェックON: 同一年度×同一分野で複数単位を入力できるように、同じセルに新しいチェックボックスを追加
+                            const newCheckbox = document.createElement('input');
+                            newCheckbox.type = 'checkbox';
+                            newCheckbox.className = 'transform scale-125 ml-2';
+                            newCheckbox.dataset.year = cb.dataset.year;
+                            newCheckbox.dataset.field = cb.dataset.field;
+                            newCheckbox.dataset.trainingType = cb.dataset.trainingType;
+                            newCheckbox.addEventListener('change', handleTrainingCheckboxChange);
+                            cell.appendChild(newCheckbox);
+                        } else {
+                            // チェックOFF: いったん右詰め整理
+                            cleanupTrailingUnchecked();
+
+                            // 2) もし未チェックになったのが「途中」でも、常に末尾に未チェックが1つある状態に合わせる
+                            //    （= チェック済み個数 + 1 の数だけチェックボックスを残す）
+                            const keep = Math.max(1, checkedCount() + 1);
+                            let boxes = getCheckboxes();
+                            while (boxes.length > keep) {
+                                cell.removeChild(boxes[boxes.length - 1]);
+                                boxes = getCheckboxes();
+                            }
+                        }
+
+                        updateProgress();
+                    }
+                    checkbox.addEventListener('change', handleTrainingCheckboxChange);
+                    cell.appendChild(checkbox);
+                    row.appendChild(cell);
+                }
+                
+                tbody.appendChild(row);
+            });
+        }
+
+
+
+
+        function recognizeTrainingInfo(text) {
+            const result = { year: null, field: -1, confidence: 0 };
+            
+            // 正確な年度認識（日本の年度制に対応）
+            let fiscalYear = null;
+            
+            // より詳細な日付パターンを検索
+            const datePatterns = [
+                // 基本的な日付パターン
+                /(20[2-3][0-9])年\s*([0-1]?[0-9])\s*月\s*([0-3]?[0-9])\s*日/g,
+                /(20[2-3][0-9])\/([0-1]?[0-9])\/([0-3]?[0-9])/g,
+                /(20[2-3][0-9])-([0-1]?[0-9])-([0-3]?[0-9])/g,
+                /(20[2-3][0-9])\.([0-1]?[0-9])\.([0-3]?[0-9])/g,
+                // 月が先に来るパターン
+                /([0-1]?[0-9])月\s*([0-3]?[0-9])日.*?(20[2-3][0-9])年/g,
+                // 年月のみのパターン
+                /(20[2-3][0-9])年\s*([0-1]?[0-9])\s*月/g
+            ];
+            
+            const foundDates = [];
+            
+            datePatterns.forEach((pattern, patternIndex) => {
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    let year, month;
+                    
+                    if (patternIndex === 4) {
+                        // 月日年の順序パターン
+                        month = parseInt(match[1]);
+                        year = parseInt(match[3]);
+                    } else {
+                        // 通常の年月日パターン
+                        year = parseInt(match[1]);
+                        month = parseInt(match[2]);
+                    }
+                    
+                    // 有効な年月かチェック
+                    if (year >= 2020 && year <= 2040 && month >= 1 && month <= 12) {
+                        // 日本の年度計算を正確に実行
+                        let calculatedFiscalYear;
+                        if (month >= 1 && month <= 3) {
+                            // 1-3月は前年度
+                            calculatedFiscalYear = year - 1;
+                        } else if (month >= 4 && month <= 12) {
+                            // 4-12月は当年度
+                            calculatedFiscalYear = year;
+                        }
+                        
+                        foundDates.push({
+                            originalYear: year,
+                            month: month,
+                            fiscalYear: calculatedFiscalYear,
+                            confidence: 1.0
+                        });
+                    }
+                }
+            });
+            
+            // 最も新しい有効な日付を選択
+            if (foundDates.length > 0) {
+                const bestDate = foundDates.reduce((best, current) => {
+                    if (current.originalYear > best.originalYear) return current;
+                    if (current.originalYear === best.originalYear && current.month > best.month) return current;
+                    return best;
+                });
+                fiscalYear = bestDate.fiscalYear;
+            } else {
+                // 日付が見つからない場合、年度表記を直接検索
+                const yearOnlyPatterns = [
+                    /(20[2-3][0-9])年度/g,
+                    /(20[2-3][0-9])年/g
+                ];
+                
+                const foundYears = [];
+                yearOnlyPatterns.forEach(pattern => {
+                    let match;
+                    while ((match = pattern.exec(text)) !== null) {
+                        const year = parseInt(match[1]);
+                        if (year >= 2020 && year <= 2040) {
+                            foundYears.push(year);
+                        }
+                    }
+                });
+                
+                if (foundYears.length > 0) {
+                    fiscalYear = Math.max(...foundYears);
+                }
+            }
+            
+            result.year = fiscalYear;
+
+            // 高精度分野認識（既存のロジックを維持）
+            let maxScore = 0;
+            let bestField = -1;
+
+            for (let fieldIndex = 0; fieldIndex < 5; fieldIndex++) {
+                const keywords = fieldKeywords[fieldIndex];
+                let score = 0;
+
+                // 主要キーワードのスコア計算（高い重み）
+                keywords.primary.forEach(keyword => {
+                    const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                    const matches = text.match(regex);
+                    if (matches) {
+                        score += matches.length * 10; // 主要キーワードは高スコア
+                    }
+                });
+
+                // 二次キーワードのスコア計算（中程度の重み）
+                keywords.secondary.forEach(keyword => {
+                    const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                    const matches = text.match(regex);
+                    if (matches) {
+                        score += matches.length * 5;
+                    }
+                });
+
+                // コンテキストキーワードのスコア計算（低い重み）
+                keywords.context.forEach(keyword => {
+                    const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                    const matches = text.match(regex);
+                    if (matches) {
+                        score += matches.length * 2;
+                    }
+                });
+
+                // 複合語でのボーナススコア
+                if (fieldIndex === 0 && (text.includes('医療倫理') || text.includes('生命倫理'))) {
+                    score += 15;
+                }
+                if (fieldIndex === 1 && (text.includes('患者・医療者') || text.includes('コミュニケーション'))) {
+                    score += 15;
+                }
+                if (fieldIndex === 2 && (text.includes('医療安全') || text.includes('安全管理'))) {
+                    score += 15;
+                }
+                if (fieldIndex === 3 && (text.includes('院内感染') || text.includes('感染対策'))) {
+                    score += 15;
+                }
+                if (fieldIndex === 4 && (text.includes('医療法') || text.includes('診療報酬') || text.includes('医療経済'))) {
+                    score += 15;
+                }
+
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestField = fieldIndex;
+                }
+            }
+
+            if (maxScore > 5) { // 最低スコア閾値
+                result.field = bestField;
+                result.confidence = Math.min(maxScore / 20, 1.0); // 信頼度を0-1に正規化
+            }
+
+            return result;
+        }
+
+        function showRecognitionDialog(recognition, fileName) {
+            const fieldNames = ['医療倫理', '患者・医療者関係の構築', '医療安全', '院内感染対策', '医療関連法規・医療経済'];
+            const fieldName = fieldNames[recognition.field];
+            
+            const confidence = Math.round(recognition.confidence * 100);
+            
+            if (confirm(`${fileName}\n\n認識結果:\n年度: ${recognition.year}年度\n分野: ①${fieldName}\n信頼度: ${confidence}%\n\nこの内容で研修履歴に追加しますか？`)) {
+                // 該当するチェックボックスを探してチェック
+                const checkbox = document.querySelector(`input[data-year="${recognition.year}"][data-field="${recognition.field}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    updateProgress();
+                    alert('研修履歴に追加しました。');
+                } else {
+                    alert('指定された年度は表示範囲外です。');
+                }
+            }
+        }
+
+        function showProgressSection() {
+            document.getElementById('progressSection').style.display = 'block';
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const progressContent = document.getElementById('progressContent');
+            const fields = ['医療倫理', '患者・医療者関係の構築', '医療安全', '院内感染対策', '医療関連法規・医療経済'];
+            
+            // 対象期間を計算
+            let validStartYear, validEndYear;
+            if (currentApplicationType === 'new') {
+                if (currentApplicationYear <= 2027) {
+                    validStartYear = 2022;
+                    validEndYear = currentApplicationYear - 1;
+                } else {
+                    validStartYear = currentApplicationYear - 5;
+                    validEndYear = currentApplicationYear - 1;
+                }
+            } else {
+                validStartYear = currentApplicationYear - 5;
+                validEndYear = currentApplicationYear - 1;
+            }
+            
+            // 各分野の単位数を計算（機構主催と機構主催以外を分けて集計）
+            const fieldCountsInstitutional = [0, 0, 0, 0, 0];
+            const fieldCountsOther = [0, 0, 0, 0, 0];
+            const yearlyCountsInstitutional = {}; // 年度ごとの機構主催研修単位数
+            const yearlyCountsOther = {}; // 年度ごとの機構主催以外研修単位数
+            let totalUnits = 0;
+            
+            // チェックボックスからカウント（両方のテーブルから）
+            document.querySelectorAll('#trainingMatrixInstitutional input[type="checkbox"], #trainingMatrixOther input[type="checkbox"]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const year = parseInt(checkbox.dataset.year);
+                    const field = parseInt(checkbox.dataset.field);
+                    const trainingType = checkbox.dataset.trainingType;
+                    
+                    if (year >= validStartYear && year <= validEndYear) {
+                        if (trainingType === 'institutional') {
+                            fieldCountsInstitutional[field]++;
+                            yearlyCountsInstitutional[year] = (yearlyCountsInstitutional[year] || 0) + 1;
+                        } else {
+                            fieldCountsOther[field]++;
+                            yearlyCountsOther[year] = (yearlyCountsOther[year] || 0) + 1;
+                        }
+                        totalUnits++;
+                    }
+                }
+            });
+            
+            // 合計分野別カウント
+            const fieldCounts = fieldCountsInstitutional.map((count, i) => count + fieldCountsOther[i]);
+            
+            
+            // 必要単位数を設定
+            let requiredUnits;
+            if (currentApplicationType === 'new' && currentApplicationYear === 2026) {
+                requiredUnits = 8;
+            } else {
+                requiredUnits = 10;
+            }
+            
+            // 分野別要件をチェック
+            let fieldRequirementMet = true;
+            let fieldRequirementText = '';
+            
+            if (currentApplicationType === 'new' && currentApplicationYear === 2026) {
+                fieldRequirementMet = true;
+                fieldRequirementText = '分野別制限なし';
+            } else {
+                fieldRequirementText = '各分野1単位以上必要';
+                fieldCounts.forEach(count => {
+                    if (count === 0) fieldRequirementMet = false;
+                });
+            }
+            
+            // 2029年度以降の特別要件チェック（自動判定）
+            let institutionalRequirementMet = true;
+            let institutionalRequirementDetails = { field0: false, field1: false, field4: false }; // ①②⑤
+            
+            if (currentApplicationYear >= 2029) {
+                // ①医療倫理（field 0）、②患者・医療者関係の構築（field 1）、⑤医療関連法規・医療経済（field 4）
+                // それぞれ機構主催研修で1単位以上必要
+                institutionalRequirementDetails.field0 = fieldCountsInstitutional[0] >= 1;
+                institutionalRequirementDetails.field1 = fieldCountsInstitutional[1] >= 1;
+                institutionalRequirementDetails.field4 = fieldCountsInstitutional[4] >= 1;
+                
+                institutionalRequirementMet = institutionalRequirementDetails.field0 && 
+                                              institutionalRequirementDetails.field1 && 
+                                              institutionalRequirementDetails.field4;
+            }
+            
+            // 総合判定
+            const totalRequirementMet = totalUnits >= requiredUnits;
+            const allRequirementsMet = totalRequirementMet && fieldRequirementMet && institutionalRequirementMet;
+            
+            // 警告メッセージの配列
+            const warnings = [];
+            
+            // ①専門医機構主催研修の毎年2単位推奨チェック
+            for (let year = validStartYear; year <= validEndYear; year++) {
+                const institutionalCount = yearlyCountsInstitutional[year] || 0;
+                if (institutionalCount === 0) {
+                    warnings.push({
+                        type: 'institutional-zero',
+                        year: year,
+                        message: `${year}年度：専門医機構主催研修を受講していません。未受講の理由書を提出していただく場合があります。`
+                    });
+                } else if (institutionalCount === 1) {
+                    warnings.push({
+                        type: 'institutional-under',
+                        year: year,
+                        message: `${year}年度：専門医機構主催研修が1単位のみです。毎年2単位以上の受講を推奨しています。`
+                    });
+                }
+            }
+            
+            // ②上限2単位チェック（機構主催）
+            for (let year = validStartYear; year <= validEndYear; year++) {
+                const institutionalCount = yearlyCountsInstitutional[year] || 0;
+                if (institutionalCount > 2) {
+                    warnings.push({
+                        type: 'institutional-over',
+                        year: year,
+                        count: institutionalCount,
+                        message: `${year}年度：専門医機構主催研修を${institutionalCount}単位受講しています。日本歯科専門医機構では「1年あたり最大2単位の受講」を推奨しています。したがって、2単位を超えて受講した場合、それ以上の受講分は矯正歯科専門医の新規申請・更新申請上のポイントとしては「申請上の意味を持たない」可能性があります。`
+                    });
+                }
+            }
+            
+            // ③上限2単位チェック（機構主催以外）
+            for (let year = validStartYear; year <= validEndYear; year++) {
+                const otherCount = yearlyCountsOther[year] || 0;
+                if (otherCount > 2) {
+                    warnings.push({
+                        type: 'other-over',
+                        year: year,
+                        count: otherCount,
+                        message: `${year}年度：専門医機構主催以外の研修を${otherCount}単位受講しています。日本歯科専門医機構では「1年あたり最大2単位の受講」を推奨しています。したがって、2単位を超えて受講した場合、それ以上の受講分は矯正歯科専門医の新規申請・更新申請上のポイントとしては「申請上の意味を持たない」可能性があります。`
+                    });
+                }
+            }
+            
+            // 進捗表示を生成
+            let progressHTML = `
+                <!-- 取得単位数 -->
+                <div class="bg-white p-4 rounded-lg border mb-6">
+                    <h3 class="font-semibold text-purple-700 mb-3">取得単位数</h3>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-2xl font-bold ${totalRequirementMet ? 'text-green-600' : 'text-red-600'}">
+                            ${totalUnits} / ${requiredUnits}
+                        </div>
+                        <div class="flex-1 bg-gray-200 rounded-full h-3">
+                            <div class="bg-${totalRequirementMet ? 'green' : 'red'}-500 h-3 rounded-full transition-all duration-300" 
+                                 style="width: ${Math.min(totalUnits / requiredUnits * 100, 100)}%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 分野別進捗状況 -->
+                <div class="bg-white p-4 rounded-lg border mb-6">
+                    <h3 class="font-semibold text-purple-700 mb-3">分野別進捗状況</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            `;
+            
+            fields.forEach((field, index) => {
+                const count = fieldCounts[index];
+                const required = (currentApplicationType === 'new' && currentApplicationYear === 2026) ? 0 : 1;
+                const met = count >= required;
+                
+                progressHTML += `
+                    <div class="text-center p-3 rounded-lg ${met ? 'bg-green-100' : 'bg-red-100'}">
+                        <div class="font-medium text-sm mb-1">①${field}</div>
+                        <div class="text-lg font-bold ${met ? 'text-green-600' : 'text-red-600'}">
+                            ${count} / ${required}
+                        </div>
+                        <div class="text-xs ${met ? 'text-green-600' : 'text-red-600'}">
+                            ${met ? '✅' : '❌'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            progressHTML += '</div></div>';
+            
+            // 判定結果を追加
+            progressHTML += `
+                <!-- 判定結果 -->
+                <div class="bg-white p-4 rounded-lg border mb-6">
+                    <h3 class="font-semibold text-purple-700 mb-3">判定結果</h3>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold ${allRequirementsMet ? 'text-green-600' : 'text-red-600'}">
+                            ${allRequirementsMet ? '✅ 申請可能' : '❌ 申請不可'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 不足項目の表示
+            if (!allRequirementsMet) {
+                progressHTML += '<div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg"><h4 class="font-semibold text-red-700 mb-2">不足項目</h4><ul class="text-sm text-red-600 space-y-1">';
+                
+                if (!totalRequirementMet) {
+                    progressHTML += `<li>• 総単位数が${requiredUnits - totalUnits}単位不足しています</li>`;
+                }
+                
+                if (!fieldRequirementMet) {
+                    fieldCounts.forEach((count, index) => {
+                        if (count === 0) {
+                            progressHTML += `<li>• ${fields[index]}の単位が不足しています</li>`;
+                        }
+                    });
+                }
+                
+                if (!institutionalRequirementMet) {
+                    if (currentApplicationYear >= 2029) {
+                        progressHTML += '<li>• 【2029年度以降必須】機構主催研修の特別要件が不足しています：</li>';
+                        if (!institutionalRequirementDetails.field0) {
+                            progressHTML += '<li class="ml-4">- ①医療倫理：機構主催研修で1単位以上必要</li>';
+                        }
+                        if (!institutionalRequirementDetails.field1) {
+                            progressHTML += '<li class="ml-4">- ②患者・医療者関係の構築：機構主催研修で1単位以上必要</li>';
+                        }
+                        if (!institutionalRequirementDetails.field4) {
+                            progressHTML += '<li class="ml-4">- ⑤医療関連法規・医療経済：機構主催研修で1単位以上必要</li>';
+                        }
+                    } else {
+                        progressHTML += '<li>• 機構主催研修の受講確認が必要です</li>';
+                    }
+                }
+                
+                progressHTML += '</ul></div>';
+            }
+            
+            // 警告メッセージの表示
+            if (warnings.length > 0) {
+                progressHTML += '<div class="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">';
+                progressHTML += '<h4 class="font-semibold text-yellow-800 mb-3 flex items-center"><i class="fas fa-exclamation-triangle mr-2"></i>注意事項</h4>';
+                progressHTML += '<div class="space-y-3">';
+                
+                warnings.forEach(warning => {
+                    let iconClass = 'fa-info-circle';
+                    let colorClass = 'text-yellow-700';
+                    
+                    if (warning.type === 'institutional-zero') {
+                        iconClass = 'fa-exclamation-circle';
+                        colorClass = 'text-orange-700';
+                    } else if (warning.type === 'institutional-over' || warning.type === 'other-over') {
+                        iconClass = 'fa-exclamation-triangle';
+                        colorClass = 'text-red-700';
+                    }
+                    
+                    progressHTML += `
+                        <div class="flex items-start space-x-2 p-3 bg-white rounded border border-yellow-200">
+                            <i class="fas ${iconClass} ${colorClass} mt-1"></i>
+                            <div class="text-sm ${colorClass}">
+                                ${warning.message}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                progressHTML += '</div></div>';
+            }
+            
+            progressContent.innerHTML = progressHTML;
+        }
+
+
+        // ===== JSONエクスポート / インポート =====
+        function buildExportData() {
+            // チェックボックス（複数単位対応）を年度×分野×研修タイプで集計
+            const checkboxCounts = {};
+            document.querySelectorAll('#trainingMatrixInstitutional input[type="checkbox"], #trainingMatrixOther input[type="checkbox"]').forEach(cb => {
+                const year = cb.dataset.year;
+                const field = cb.dataset.field;
+                const trainingType = cb.dataset.trainingType;
+                if (!year || field === undefined || !trainingType) return;
+                const key = `${year}-${field}-${trainingType}`;
+                if (!checkboxCounts[key]) {
+                    checkboxCounts[key] = { 
+                        year: parseInt(year), 
+                        field: parseInt(field), 
+                        trainingType: trainingType,
+                        count: 0 
+                    };
+                }
+                if (cb.checked) checkboxCounts[key].count += 1;
+            });
+
+            return {
+                schemaVersion: '2.0',
+                exportedAt: new Date().toISOString(),
+                app: '矯正歯科専門医 共通研修履歴管理アプリ',
+                applicationType: currentApplicationType || '',
+                applicationTypeLabel: currentApplicationType === 'new' ? '新規' : (currentApplicationType === 'renewal' ? '更新' : ''),
+                applicationYear: currentApplicationYear || '',
+                // 手動チェックの集計結果（複数単位、研修タイプ別）
+                checkboxUnits: Object.values(checkboxCounts),
+            };
+        }
+
+        function downloadJson(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearTrainingMatrixChecks() {
+            // 両方のテーブルのセル内の追加チェックボックスも含めて全てリセット（各セルは1個に戻す）
+            document.querySelectorAll('#trainingMatrixInstitutional tbody td, #trainingMatrixOther tbody td').forEach(td => {
+                const cbs = Array.from(td.querySelectorAll('input[type="checkbox"]'));
+                if (cbs.length === 0) return;
+                // 最初の1個だけ残して削除
+                cbs.forEach((cb, idx) => {
+                    if (idx === 0) {
+                        cb.checked = false;
+                    } else {
+                        td.removeChild(cb);
+                    }
+                });
+            });
+        }
+
+        function applyImportedData(data) {
+            // 申請タイプ & 申請年度
+            if (data.applicationType) {
+                document.getElementById('applicationType').value = data.applicationType;
+                // changeを発火して年度選択肢を生成
+                document.getElementById('applicationType').dispatchEvent(new Event('change'));
+            }
+            if (data.applicationYear) {
+                document.getElementById('applicationYear').value = data.applicationYear;
+                document.getElementById('applicationYear').dispatchEvent(new Event('change'));
+            }
+
+            // マトリックスが描画された前提で反映
+            clearTrainingMatrixChecks();
+
+            // checkboxUnits（年度×分野×研修タイプのチェック数）を反映
+            if (Array.isArray(data.checkboxUnits)) {
+                data.checkboxUnits.forEach(item => {
+                    const year = item.year;
+                    const field = item.field;
+                    const trainingType = item.trainingType || 'institutional'; // 旧バージョン互換性のためデフォルト値
+                    const count = Math.max(0, parseInt(item.count || 0));
+                    if (!year || field === undefined || count <= 0) return;
+
+                    // 対象テーブルとセルを特定
+                    const tableId = trainingType === 'institutional' ? 'trainingMatrixInstitutional' : 'trainingMatrixOther';
+                    const base = document.querySelector(`#${tableId} input[type="checkbox"][data-year="${year}"][data-field="${field}"]`);
+                    if (!base) return;
+                    const td = base.closest('td');
+                    if (!td) return;
+
+                    // イベントハンドラを動的に作成
+                    function createCheckboxChangeHandler(cell) {
+                        return function(e) {
+                            const cb = e.target;
+                            const getCheckboxes = () => Array.from(cell.querySelectorAll('input[type="checkbox"]'));
+                            const checkedCount = () => getCheckboxes().filter(x => x.checked).length;
+
+                            const cleanupTrailingUnchecked = () => {
+                                let boxes = getCheckboxes();
+                                while (boxes.length > 1 && boxes[boxes.length - 1].checked === false) {
+                                    cell.removeChild(boxes[boxes.length - 1]);
+                                    boxes = getCheckboxes();
+                                }
+                            };
+
+                            if (cb.checked) {
+                                const newCheckbox = document.createElement('input');
+                                newCheckbox.type = 'checkbox';
+                                newCheckbox.className = 'transform scale-125 ml-2';
+                                newCheckbox.dataset.year = cb.dataset.year;
+                                newCheckbox.dataset.field = cb.dataset.field;
+                                newCheckbox.dataset.trainingType = cb.dataset.trainingType;
+                                newCheckbox.addEventListener('change', createCheckboxChangeHandler(cell));
+                                cell.appendChild(newCheckbox);
+                            } else {
+                                cleanupTrailingUnchecked();
+                                const keep = Math.max(1, checkedCount() + 1);
+                                let boxes = getCheckboxes();
+                                while (boxes.length > keep) {
+                                    cell.removeChild(boxes[boxes.length - 1]);
+                                    boxes = getCheckboxes();
+                                }
+                            }
+                            updateProgress();
+                        };
+                    }
+
+                    // count個チェック済みにする（必要ならチェックボックスを増やす）
+                    for (let i = 0; i < count; i++) {
+                        let boxes = Array.from(td.querySelectorAll('input[type="checkbox"]'));
+                        if (i >= boxes.length) {
+                            // 末尾に追加
+                            const newCb = document.createElement('input');
+                            newCb.type = 'checkbox';
+                            newCb.className = 'transform scale-125 ml-2';
+                            newCb.dataset.year = String(year);
+                            newCb.dataset.field = String(field);
+                            newCb.dataset.trainingType = trainingType;
+                            newCb.addEventListener('change', createCheckboxChangeHandler(td));
+                            td.appendChild(newCb);
+                            boxes = Array.from(td.querySelectorAll('input[type="checkbox"]'));
+                        }
+                        boxes[i].checked = true;
+                    }
+
+                    // 末尾に空きを1つ残す（右詰め入力の思想に合わせる）
+                    let boxes = Array.from(td.querySelectorAll('input[type="checkbox"]'));
+                    if (boxes.filter(x => x.checked).length === boxes.length) {
+                        const extra = document.createElement('input');
+                        extra.type = 'checkbox';
+                        extra.className = 'transform scale-125 ml-2';
+                        extra.dataset.year = String(year);
+                        extra.dataset.field = String(field);
+                        extra.dataset.trainingType = trainingType;
+                        extra.addEventListener('change', createCheckboxChangeHandler(td));
+                        td.appendChild(extra);
+                    }
+                });
+            }
+
+            updateProgress();
+        }
+
+        // 印刷ボタン
+        document.getElementById('printBtn').addEventListener('click', function() {
+            window.print();
+        });
+
+        // JSONエクスポートボタン
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const data = buildExportData();
+            const safeYear = data.applicationYear ? String(data.applicationYear) : '不明';
+            const typeLabel = data.applicationType === 'new' ? '新規' : (data.applicationType === 'renewal' ? '更新' : '不明');
+            downloadJson(data, `共通研修データ_${safeYear}_${typeLabel}.json`);
+        });
+
+        // インポートボタン
+        document.getElementById('importBtn').addEventListener('click', function() {
+            document.getElementById('importFile').click();
+        });
+
+        document.getElementById('importFile').addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('importStatus');
+            status.textContent = '読み込み中...';
+
+            const reader = new FileReader();
+            reader.onload = function() {
+                try {
+                    const data = JSON.parse(reader.result);
+                    applyImportedData(data);
+                    status.textContent = 'インポート完了';
+                } catch (e) {
+                    status.textContent = 'インポート失敗（JSON形式を確認してください）';
+                    alert('インポートに失敗しました。JSONファイルの形式をご確認ください。');
+                }
+            };
+            reader.onerror = function() {
+                const status = document.getElementById('importStatus');
+                status.textContent = '読み込みエラー';
+            };
+            reader.readAsText(file);
+
+            // 同じファイルを再選択できるようにリセット
+            this.value = '';
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+        });
+    </script>
+</body>
+</html>
+    <script id="html_badge_script1">
+        window.__genspark_remove_badge_link = "https://www.genspark.ai/api/html_badge/" +
+            "remove_badge?token=To%2FBnjzloZ3UfQdcSaYfDjz8PmRlUhN3i8H7%2FL2Hk3JB94h%2BASdgqHZbF8brJobJRxUgnuR2UWhuTXl4WcyPeVF3%2FTP6v8XS7cYZP5NfAUPICl6GvmWCrYVXcL9qEW%2BRM27LegNO92B7jSqyAj0L43FadGxoRolOFerLiCFr8tJWIFOlT1MJxNxtyLePgX5gVTcTnFEn3z0d0Ku48UYRRMIUcshd1zkZgU2LM%2BKU3lk%2F7olVWCulC6lN6W0tMUUpVTOouMEeljnhb8QBNymHcORhKiTHJw4lVOLJDwPFmnnCKM9K%2Ft9Tg2DbPXfAYDelA7TJ51L%2BgXulwhCXuLkq5X24ARIjQ2oPWPaxHQBr7%2F2wXbAJFFvnFcLaUCJSp0WvIZQoPgKrPRd1uVIY0WytJ6bhoCmPFUz6M%2B9ni1xeZxA01YyXrv%2BkKVsH8ZPeY2p%2F70JIpX5Sn16iYb%2BP8PhIYSIKIJwjLlUU9D5X7xbk2eSuw5YIYFyB2pDoQOzBOg5kxdEQCtViz4IwdV351V4iNmDo8sCNeMel%2BAn%2Bq7zLPihUWmgtIuLyIgltg9Qlx%2F6H";
+        window.__genspark_locale = "ja-JP";
+        window.__genspark_token = "To/BnjzloZ3UfQdcSaYfDjz8PmRlUhN3i8H7/L2Hk3JB94h+ASdgqHZbF8brJobJRxUgnuR2UWhuTXl4WcyPeVF3/TP6v8XS7cYZP5NfAUPICl6GvmWCrYVXcL9qEW+RM27LegNO92B7jSqyAj0L43FadGxoRolOFerLiCFr8tJWIFOlT1MJxNxtyLePgX5gVTcTnFEn3z0d0Ku48UYRRMIUcshd1zkZgU2LM+KU3lk/7olVWCulC6lN6W0tMUUpVTOouMEeljnhb8QBNymHcORhKiTHJw4lVOLJDwPFmnnCKM9K/t9Tg2DbPXfAYDelA7TJ51L+gXulwhCXuLkq5X24ARIjQ2oPWPaxHQBr7/2wXbAJFFvnFcLaUCJSp0WvIZQoPgKrPRd1uVIY0WytJ6bhoCmPFUz6M+9ni1xeZxA01YyXrv+kKVsH8ZPeY2p/70JIpX5Sn16iYb+P8PhIYSIKIJwjLlUU9D5X7xbk2eSuw5YIYFyB2pDoQOzBOg5kxdEQCtViz4IwdV351V4iNmDo8sCNeMel+An+q7zLPihUWmgtIuLyIgltg9Qlx/6H";
+    </script>
+    
+    <script id="html_notice_dialog_script" src="https://www.genspark.ai/notice_dialog.js"></script>
+    
